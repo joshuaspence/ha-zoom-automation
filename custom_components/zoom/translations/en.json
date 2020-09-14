@@ -24,7 +24,30 @@
             "no_external_url": "You do not have an external URL for your Home Assistant instance configured which is needed to set up the Zoom integration. You need to set the `external_url` property in the `homeassistant` section of your `configuration.yaml`, or set the `External URL` property in the Home Assistant `General Configuration` UI, before trying to setup the Zoom integration again. You can learn more about configuring this parameter [here](https://www.home-assistant.io/docs/configuration/basic)"
         },
         "create_entry": {
-            "default": "Successfully authenticated"
+            "default": "Successfully authenticated. If you would like to monitor your contacts, visit the Integrations>Options menu."
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Choose Contact Types",
+                "description": "Select the type(s) of contacts you would like to monitor. If you select nothing, any existing contacts being monitored will be removed. To avoid this, close this dialog without submitting and no changes will be saved.",
+                "data": {
+                    "contact_types": "Contact Types"
+                }
+            },
+            "include_or_exclude_contacts": {
+                "title": "Choose Contacts to Monitor",
+                "description": "You can pick which contacts you want to monitor. If you choose `include`, only the contacts you select will be added. If you choose `exclude`, all contacts but the ones you select will be added. Any existing contacts you were monitoring that do not fit within these rules will be removed.",
+                "data": {
+                    "include_or_exclude": "Include or Exclude?",
+                    "contacts_to_include_or_exclude": "Contacts"
+                }
+            },
+            "no_contacts": {
+                "title": "No Contacts Found",
+                "description": "Unable to find any contacts for the contact types you selected. After clicking `Submit`, all existing contacts being monitored will be removed. To avoid this, close this dialog without submitting and no changes will be saved."
+            }
         }
     }
 }

@@ -11,6 +11,7 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ID, CONF_NAME, STATE_OFF, STATE_ON
 from homeassistant.core import Event
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.typing import HomeAssistantType
 from homeassistant.util import slugify
@@ -19,12 +20,15 @@ from .common import ZoomAPI, ZoomUserProfileDataUpdateCoordinator, get_contact_n
 from .const import (
     API,
     ATTR_EVENT,
+    CONF_CONTACT_IDS_TO_MONITOR,
     CONNECTIVITY_EVENT,
     CONNECTIVITY_ID,
     CONNECTIVITY_STATUS,
     CONNECTIVITY_STATUS_OFF,
+    CONTACTS,
     DOMAIN,
     HA_ZOOM_EVENT,
+    UNSUB,
     USER_PROFILE_COORDINATOR,
 )
 
@@ -40,6 +44,34 @@ async def async_setup_entry(
     """Set up a Zoom presence sensor entry."""
     entity = ZoomAuthenticatedUserBinarySensor(hass, config_entry)
     async_add_entities([entity], update_before_add=True)
+
+    for id in config_entry.options.get(CONF_CONTACT_IDS_TO_MONITOR, []):
+        entity = ZoomContactUserBinarySensor(hass, config_entry, id)
+        async_add_entities([entity], update_before_add=True)
+        hass.data[DOMAIN][config_entry.entry_id][CONTACTS].append(entity)
+
+    async def update_contact_entities(entry: ConfigEntry) -> None:
+        """Update contact entities if update signal comes from config entry."""
+        ids_to_monitor = entry.options.get(CONF_CONTACT_IDS_TO_MONITOR, [])
+        existing_ids = []
+
+        # First we identify which existing entities to remove and which to keep
+        for entity in hass.data[DOMAIN][entry.entry_id][CONTACTS]:
+            if entity.id not in ids_to_monitor:
+                hass.async_create_task(entity.async_remove())
+                hass.data[DOMAIN][entry.entry_id][CONTACTS].remove(entity)
+            else:
+                existing_ids.append(entity.id)
+
+        # Then we add the new entities that don't already exist
+        for id in list(set(ids_to_monitor) - set(existing_ids)):
+            entity = ZoomContactUserBinarySensor(hass, entry, id)
+            async_add_entities([entity], update_before_add=True)
+            hass.data[DOMAIN][entry.entry_id][CONTACTS].append(entity)
+
+    hass.data[DOMAIN][config_entry.entry_id][UNSUB].append(
+        async_dispatcher_connect(hass, config_entry.entry_id, update_contact_entities)
+    )
 
 
 def get_data_from_path(data: Dict[str, Any], path: List[str]) -> Optional[str]:

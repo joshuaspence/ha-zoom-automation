@@ -3,6 +3,8 @@ from homeassistant.const import CONF_CLIENT_ID, CONF_CLIENT_SECRET
 from homeassistant.helpers.config_validation import string
 import voluptuous as vol
 
+CONTACTS = "contacts"
+UNSUB = "unsub"
 API = "api"
 DOMAIN = "zoom"
 DEFAULT_NAME = "Zoom"
@@ -10,6 +12,14 @@ DEFAULT_NAME = "Zoom"
 HA_URL = f"/api/{DOMAIN}"
 
 CONF_VERIFICATION_TOKEN = "verification_token"
+CONF_CONTACT_TYPES = "contact_types"
+ATTR_EXTERNAL = "external"
+ATTR_COMPANY = "company"
+CONF_CONTACTS_TO_INCLUDE_OR_EXCLUDE = "contacts_to_include_or_exclude"
+CONF_CONTACT_IDS_TO_MONITOR = "contacts_to_monitor"
+CONF_INCLUDE_OR_EXCLUDE = "include_or_exclude"
+ATTR_EXCLUDE = "exclude"
+ATTR_INCLUDE = "include"
 
 OAUTH2_AUTHORIZE = "https://zoom.us/oauth/authorize"
 OAUTH2_TOKEN = "https://zoom.us/oauth/token"
@@ -27,8 +37,6 @@ ZOOM_SCHEMA = vol.Schema(
         vol.Required(CONF_VERIFICATION_TOKEN): vol.Coerce(str),
     }
 )
-
-CONF_VERIFICATION_TOKEN = "verification_token"
 
 ATTR_EVENT = "event"
 ATTR_PAYLOAD = "payload"

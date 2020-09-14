@@ -3,13 +3,28 @@ import logging
 from typing import Any, Dict
 
 from homeassistant import config_entries
-from homeassistant.const import CONF_CLIENT_ID, CONF_CLIENT_SECRET, CONF_NAME
+from homeassistant.const import (
+    CONF_CLIENT_ID,
+    CONF_CLIENT_SECRET,
+    CONF_EXCLUDE,
+    CONF_INCLUDE,
+    CONF_NAME,
+)
+from homeassistant.core import callback
 from homeassistant.helpers import config_entry_oauth2_flow
+from homeassistant.helpers.config_validation import multi_select
 from homeassistant.util import slugify
 import voluptuous as vol
 
 from .common import ZoomOAuth2Implementation, valid_external_url
 from .const import (
+    API,
+    ATTR_COMPANY,
+    ATTR_EXTERNAL,
+    CONF_CONTACT_IDS_TO_MONITOR,
+    CONF_CONTACT_TYPES,
+    CONF_CONTACTS_TO_INCLUDE_OR_EXCLUDE,
+    CONF_INCLUDE_OR_EXCLUDE,
     CONF_VERIFICATION_TOKEN,
     DOMAIN,
     OAUTH2_AUTHORIZE,
@@ -20,6 +35,119 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
+class ZoomOptionsConfigFlow(config_entries.OptionsFlow):
+    """Handle Zoom options."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize Zoom options flow."""
+        self.config_entry = config_entry
+        self._first_run = True
+        self._options = {}
+        self._contacts = {}
+
+    async def async_step_init(
+        self, user_input: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
+        """Manage the Zoom options."""
+        if user_input:
+            if user_input.get(CONF_CONTACT_TYPES):
+                self._options[CONF_CONTACT_TYPES] = user_input[CONF_CONTACT_TYPES]
+                return await self.async_step_include_or_exclude_contacts()
+
+            return self.async_create_entry(title="", data={})
+
+        options = vol.Schema(
+            {
+                vol.Optional(
+                    CONF_CONTACT_TYPES,
+                    default=self.config_entry.options.get(
+                        CONF_CONTACT_TYPES,
+                        [],
+                    ),
+                ): multi_select(
+                    [ATTR_COMPANY, ATTR_EXTERNAL]  # type: ignore
+                )
+            }
+        )
+
+        return self.async_show_form(step_id="init", data_schema=options)
+
+    async def async_step_include_or_exclude_contacts(
+        self, user_input: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
+        """Manage the Zoom contacts included or excluded."""
+        if user_input:
+            if user_input.get(CONF_CONTACTS_TO_INCLUDE_OR_EXCLUDE):
+                self._options[CONF_INCLUDE_OR_EXCLUDE] = user_input[
+                    CONF_INCLUDE_OR_EXCLUDE
+                ]
+                self._options[CONF_CONTACTS_TO_INCLUDE_OR_EXCLUDE] = user_input[
+                    CONF_CONTACTS_TO_INCLUDE_OR_EXCLUDE
+                ]
+                if user_input[CONF_INCLUDE_OR_EXCLUDE] == CONF_INCLUDE:
+                    self._options[CONF_CONTACT_IDS_TO_MONITOR] = [
+                        self._contacts[k]
+                        for k in user_input[CONF_CONTACTS_TO_INCLUDE_OR_EXCLUDE]
+                    ]
+                else:
+                    self._options[CONF_CONTACT_IDS_TO_MONITOR] = [
+                        self._contacts[k]
+                        for k in self._contacts.keys()
+                        if k not in user_input[CONF_CONTACTS_TO_INCLUDE_OR_EXCLUDE]
+                    ]
+
+            return self.async_create_entry(title="", data=self._options)
+
+        default_include_or_exclude = (
+            CONF_EXCLUDE
+            if self.config_entry.options.get(CONF_INCLUDE_OR_EXCLUDE) == CONF_EXCLUDE
+            else CONF_INCLUDE
+        )
+        contacts = await self.hass.data[DOMAIN][self.config_entry.entry_id][
+            API
+        ].async_get_contacts(self._options[CONF_CONTACT_TYPES])
+
+        if contacts:
+            self._contacts = {
+                f"{contact['first_name']} {contact['last_name']} ({contact['email']})": contact[
+                    "id"
+                ]
+                for contact in contacts
+            }
+            options = vol.Schema(
+                {
+                    vol.Optional(
+                        CONF_INCLUDE_OR_EXCLUDE,
+                        default=default_include_or_exclude,
+                    ): vol.All(vol.In([CONF_INCLUDE, CONF_EXCLUDE]), vol.Lower),
+                    vol.Optional(
+                        CONF_CONTACTS_TO_INCLUDE_OR_EXCLUDE,
+                        default=self.config_entry.options.get(
+                            CONF_CONTACTS_TO_INCLUDE_OR_EXCLUDE
+                        ),
+                    ): multi_select(
+                        sorted([k for k in self._contacts.keys()])  # type: ignore
+                    ),
+                }
+            )
+
+            return self.async_show_form(
+                step_id="include_or_exclude_contacts", data_schema=options
+            )
+
+        return await self.async_step_no_contacts()
+
+    async def async_step_no_contacts(
+        self, user_input: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
+        """Display a message that no contacts were found."""
+        if self._first_run:
+            self._first_run = False
+            return self.async_show_form(step_id="no_contacts")
+
+        return self.async_create_entry(title="", data=self._options)
+
+
 class ZoomOAuth2FlowHandler(
     config_entry_oauth2_flow.AbstractOAuth2FlowHandler, domain=DOMAIN
 ):
@@ -27,6 +155,14 @@ class ZoomOAuth2FlowHandler(
 
     DOMAIN = DOMAIN
     CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_PUSH
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> ZoomOptionsConfigFlow:
+        """Get the options flow for this handler."""
+        return ZoomOptionsConfigFlow(config_entry)
 
     @property
     def logger(self) -> logging.Logger:
