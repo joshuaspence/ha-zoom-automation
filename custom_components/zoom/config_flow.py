@@ -109,7 +109,10 @@ class ZoomOptionsConfigFlow(config_entries.OptionsFlow):
 
         if contacts:
             self._contacts = {
-                get_contact_name(contact): contact["id"] for contact in contacts
+                f"[{contact['contact_type']}] {get_contact_name(contact)}"
+                if len(self._options[CONF_CONTACT_TYPES]) > 1
+                else f"{get_contact_name(contact)}": contact["id"]
+                for contact in contacts
             }
 
             options = vol.Schema(
