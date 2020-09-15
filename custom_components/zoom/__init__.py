@@ -3,7 +3,7 @@ from logging import getLogger
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_CLIENT_ID, CONF_CLIENT_SECRET, CONF_ID
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_entry_oauth2_flow, entity
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.typing import ConfigType
@@ -62,6 +62,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType):
     return True
 
 
+@callback
 async def _async_send_update_options_signal(
     hass: HomeAssistant, config_entry: ConfigEntry
 ) -> None:

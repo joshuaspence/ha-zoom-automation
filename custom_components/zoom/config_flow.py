@@ -16,7 +16,7 @@ from homeassistant.helpers.config_validation import multi_select
 from homeassistant.util import slugify
 import voluptuous as vol
 
-from .common import ZoomOAuth2Implementation, valid_external_url
+from .common import ZoomOAuth2Implementation, get_contact_name, valid_external_url
 from .const import (
     API,
     ATTR_COMPANY,
@@ -109,11 +109,9 @@ class ZoomOptionsConfigFlow(config_entries.OptionsFlow):
 
         if contacts:
             self._contacts = {
-                f"{contact['first_name']} {contact['last_name']} ({contact['email']})": contact[
-                    "id"
-                ]
-                for contact in contacts
+                get_contact_name(contact): contact["id"] for contact in contacts
             }
+
             options = vol.Schema(
                 {
                     vol.Optional(
