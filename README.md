@@ -8,6 +8,8 @@
 [![Discord][discord-shield]][discord]
 [![Community Forum][forum-shield]][forum]
 
+# This branch is unmaintained. Use at your own risk, no support will be provided for this version.
+
 _Component to help create automations for events that occur in your [Zoom][zoom] account._
 
 {% if installed %}
@@ -41,6 +43,8 @@ You will get a binary sensor out of the box:
 | Name | `binary_sensor.zoom_{PROVIDED_ACCOUNT_NAME}` |
 | Purpose | Tracks user presence on a Zoom call by consuming the  `User's presence status has been updated`  event. If the state is `on`, the user is on a Zoom call. |
 | Notes | If  `User's presence status has been updated`  is not enabled in the Zoom App's Event Subscriptions, this sensor will not work and can be disabled. |
+
+You can optionally add binary sensors for your contacts. To do this, find the Zoom integration in your Home Assistant Configuration -> Integrations UI and click on Options. You can then choose whether you want to exclude or include a list of contacts (if you exclude, every contact you don't select will be included) and choose the specific contacts selected. After hitting Submit, a new binary sensor will be created for each applicable contact.
 
 </details>
 
