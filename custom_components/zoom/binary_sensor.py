@@ -313,6 +313,17 @@ class ZoomContactUserBinarySensor(ZoomBaseBinarySensor):
         super().__init__(hass, config_entry)
         self._id = id
 
+    async def async_update(self) -> None:
+        """Update state of entity."""
+        if self.id:
+            try:
+                self._profile = await self._api.async_get_contact_user_profile(self.id)
+                self._set_state(self._profile["presence_status"])
+                self._available = True
+            except:
+                # If API call fails we can assume we can't talk to Zoom
+                self._available = False
+
     @property
     def id(self) -> Optional[str]:
         """Get user ID."""
